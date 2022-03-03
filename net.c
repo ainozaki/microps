@@ -1,5 +1,6 @@
 #include "net.h"
 
+#include <signal.h>
 #include <stddef.h>
 #include <string.h>
 
@@ -9,6 +10,7 @@
 #include "util.h"
 
 #define PROTOCOL_QUEUE_LIMIT
+#define INTR_IRQ_SOFTIRQ SIGUSR1
 
 static struct net_device* devices;
 
@@ -127,6 +129,8 @@ int net_input_handler(uint16_t type,
       num = proto->queue.num;
       debugf("queue pushed (num:%u), dev=%s, type=0x%04x, len=%zd", num,
              dev->name, proto->queue.num, dev->name, type, len);
+      // software intr
+      intr_raise_irq(INTR_IRQ_SOFTIRQ);
       return 0;
     }
   }
@@ -202,5 +206,26 @@ int net_protocol_register(uint16_t type,
   protocols = proto;
 
   infof("registered, type=0x%04x", type);
+  return 0;
+}
+
+int net_softirq_handler(void) {
+  struct net_protocol* proto;
+  struct net_protocol_queue_entry* entry;
+
+  for (proto = protocols; proto; proto = proto->next) {
+    while (1) {
+      entry = queue_pop(&proto->queue);
+      if (!entry) {
+        break;
+      }
+      debugf("queue poped (num%u), dev=%s, type=0x%04x, len=%zu",
+             proto->queue.num, entry->dev->name, proto->type, entry->len);
+      // Call protocol interface func
+      proto->handler(entry->data, entry->len, entry->dev);
+
+      memory_free(entry);
+    }
+  }
   return 0;
 }
