@@ -30,6 +30,6 @@ struct net_device *dummy_init(void) {
     errorf("net_device_register() failure");
     return NULL;
   }
-	debugf("initialized, dev=%s", dev->name);
-	return dev;
+  debugf("initialized, dev=%s", dev->name);
+  return dev;
 }

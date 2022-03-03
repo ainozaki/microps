@@ -23,7 +23,7 @@ endif
 .SUFFIXES:
 .SUFFIXES: .c .o
 
-.PHONY: all clean
+.PHONY: all clean format
 
 all: $(APPS) $(TESTS)
 
@@ -38,3 +38,6 @@ $(TESTS): %.exe : %.o $(OBJS) $(DRIVERS) test/test.h
 
 clean:
 	rm -rf $(APPS) $(APPS:.exe=.o) $(OBJS) $(DRIVERS) $(TESTS) $(TESTS:.exe=.o)
+
+format:
+	clang-format -i $(TESTS:.exe=.c) $(OBJS:.o=.c) $(OBJS:.o=.h) $(DRIVERS:.o=.c) $(DRIVERS:.o=.h)
