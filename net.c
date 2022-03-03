@@ -2,6 +2,7 @@
 
 #include <stddef.h>
 
+#include "intr.h"
 #include "platform.h"
 #include "util.h"
 
@@ -89,6 +90,11 @@ int net_input_handler(uint16_t type, const uint8_t *data, size_t len,
 
 int net_run(void) {
   struct net_device *dev;
+  if (intr_run() == -1) {
+    errorf("intr_run failed");
+    return -1;
+  }
+
   debugf("open all devices...");
   for (dev = devices; dev; dev = dev->next) {
     net_device_open(dev);
@@ -99,6 +105,7 @@ int net_run(void) {
 
 int net_shutdown(void) {
   struct net_device *dev;
+  intr_shutdown();
   debugf("close all devices...");
   for (dev = devices; dev; dev = dev->next) {
     net_device_close(dev);
@@ -108,6 +115,10 @@ int net_shutdown(void) {
 }
 
 int net_init(void) {
+  if (intr_init() == -1) {
+    errorf("intr_run failed");
+    return -1;
+  }
   infof("initialized");
   return 0;
 }
