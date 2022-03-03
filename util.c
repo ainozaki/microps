@@ -17,8 +17,13 @@
  * Logging
  */
 
-int lprintf(FILE *fp, int level, const char *file, int line, const char *func,
-            const char *fmt, ...) {
+int lprintf(FILE* fp,
+            int level,
+            const char* file,
+            int line,
+            const char* func,
+            const char* fmt,
+            ...) {
   struct timeval tv;
   struct tm tm;
   char timestamp[32];
@@ -38,14 +43,15 @@ int lprintf(FILE *fp, int level, const char *file, int line, const char *func,
   return n;
 }
 
-void hexdump(FILE *fp, const void *data, size_t size) {
-  unsigned char *src;
+void hexdump(FILE* fp, const void* data, size_t size) {
+  unsigned char* src;
   int offset, index;
 
   flockfile(fp);
-  src = (unsigned char *)data;
-  fprintf(fp, "+------+-------------------------------------------------+------"
-              "------------+\n");
+  src = (unsigned char*)data;
+  fprintf(fp,
+          "+------+-------------------------------------------------+------"
+          "------------+\n");
   for (offset = 0; offset < (int)size; offset += 16) {
     fprintf(fp, "| %04x | ", offset);
     for (index = 0; index < 16; index++) {
@@ -69,8 +75,9 @@ void hexdump(FILE *fp, const void *data, size_t size) {
     }
     fprintf(fp, " |\n");
   }
-  fprintf(fp, "+------+-------------------------------------------------+------"
-              "------------+\n");
+  fprintf(fp,
+          "+------+-------------------------------------------------+------"
+          "------------+\n");
   funlockfile(fp);
 }
 
@@ -79,18 +86,18 @@ void hexdump(FILE *fp, const void *data, size_t size) {
  */
 
 struct queue_entry {
-  struct queue_entry *next;
-  void *data;
+  struct queue_entry* next;
+  void* data;
 };
 
-void queue_init(struct queue_head *queue) {
+void queue_init(struct queue_head* queue) {
   queue->head = NULL;
   queue->tail = NULL;
   queue->num = 0;
 }
 
-void *queue_push(struct queue_head *queue, void *data) {
-  struct queue_entry *entry;
+void* queue_push(struct queue_head* queue, void* data) {
+  struct queue_entry* entry;
 
   if (!queue) {
     return NULL;
@@ -112,9 +119,9 @@ void *queue_push(struct queue_head *queue, void *data) {
   return data;
 }
 
-void *queue_pop(struct queue_head *queue) {
-  struct queue_entry *entry;
-  void *data;
+void* queue_pop(struct queue_head* queue) {
+  struct queue_entry* entry;
+  void* data;
 
   if (!queue || !queue->head) {
     return NULL;
@@ -130,16 +137,17 @@ void *queue_pop(struct queue_head *queue) {
   return data;
 }
 
-void *queue_peek(struct queue_head *queue) {
+void* queue_peek(struct queue_head* queue) {
   if (!queue || !queue->head) {
     return NULL;
   }
   return queue->head->data;
 }
 
-void queue_foreach(struct queue_head *queue,
-                   void (*func)(void *arg, void *data), void *arg) {
-  struct queue_entry *entry;
+void queue_foreach(struct queue_head* queue,
+                   void (*func)(void* arg, void* data),
+                   void* arg) {
+  struct queue_entry* entry;
 
   if (!queue || !func) {
     return;
@@ -165,7 +173,7 @@ static int endian;
 static int byteorder(void) {
   uint32_t x = 0x00000001;
 
-  return *(uint8_t *)&x ? __LITTLE_ENDIAN : __BIG_ENDIAN;
+  return *(uint8_t*)&x ? __LITTLE_ENDIAN : __BIG_ENDIAN;
 }
 
 static uint16_t byteswap16(uint16_t v) {
@@ -209,7 +217,7 @@ uint32_t ntoh32(uint32_t n) {
  * Checksum
  */
 
-uint16_t cksum16(uint16_t *addr, uint16_t count, uint32_t init) {
+uint16_t cksum16(uint16_t* addr, uint16_t count, uint32_t init) {
   uint32_t sum;
 
   sum = init;
@@ -218,7 +226,7 @@ uint16_t cksum16(uint16_t *addr, uint16_t count, uint32_t init) {
     count -= 2;
   }
   if (count > 0) {
-    sum += *(uint8_t *)addr;
+    sum += *(uint8_t*)addr;
   }
   while (sum >> 16) {
     sum = (sum & 0xffff) + (sum >> 16);

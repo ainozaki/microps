@@ -10,29 +10,32 @@
 static sigset_t sigmask;
 // intr thread id
 static pthread_t tid;
-static struct irq_entry *irqs;
+static struct irq_entry* irqs;
 static pthread_barrier_t barrier;
 
 struct irq_entry {
-  struct irq_entry *next;
+  struct irq_entry* next;
   unsigned int irq;
-  int (*handler)(unsigned int irg, void *dev);
-  int flags; // c.f. share irq number
+  int (*handler)(unsigned int irg, void* dev);
+  int flags;  // c.f. share irq number
   char name[16];
-  void *dev;
+  void* dev;
 };
 
 int intr_request_irq(unsigned int irq,
-                     int (*handler)(unsigned int irq, void *dev), int flags,
-                     const char *name, void *dev) {
-  struct irq_entry *entry;
+                     int (*handler)(unsigned int irq, void* dev),
+                     int flags,
+                     const char* name,
+                     void* dev) {
+  struct irq_entry* entry;
 
   debugf("irq=%u, flags=%d, name=%s", irq, flags, name);
   for (entry = irqs; entry; entry = entry->next) {
     if (entry->irq == irq) {
       if (entry->flags ^ INTR_IRQ_SHARED || flags ^ INTR_IRQ_SHARED) {
-        errorf("failure in intr_request_irq. conflicts with already registerd "
-               "IRQs");
+        errorf(
+            "failure in intr_request_irq. conflicts with already registerd "
+            "IRQs");
         return -1;
       }
     }
@@ -54,14 +57,16 @@ int intr_request_irq(unsigned int irq,
   return 0;
 }
 
-int intr_raise_irq(unsigned int irq) { return pthread_kill(tid, (int)irq); }
+int intr_raise_irq(unsigned int irq) {
+  return pthread_kill(tid, (int)irq);
+}
 
 // Create thread for intr
-static void *intr_thread(void *arg) {
+static void* intr_thread(void* arg) {
   int terminate = 0;
   int sig;
   int err;
-  struct irq_entry *entry;
+  struct irq_entry* entry;
 
   debugf("start...");
   pthread_barrier_wait(&barrier);
@@ -73,17 +78,17 @@ static void *intr_thread(void *arg) {
     }
 
     switch (sig) {
-    case SIGHUP:
-      terminate = 1;
-      break;
-    default:
-      for (entry = irqs; entry; entry = entry->next) {
-        if (entry->irq == (unsigned int)sig) {
-          debugf("irq=%d, name=%s", entry->irq, entry->name);
-          entry->handler(entry->irq, entry->dev);
+      case SIGHUP:
+        terminate = 1;
+        break;
+      default:
+        for (entry = irqs; entry; entry = entry->next) {
+          if (entry->irq == (unsigned int)sig) {
+            debugf("irq=%d, name=%s", entry->irq, entry->name);
+            entry->handler(entry->irq, entry->dev);
+          }
         }
-      }
-      break;
+        break;
     }
   }
   debugf("terminated");

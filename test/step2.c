@@ -13,7 +13,7 @@ static void on_signal(int s) {
 }
 
 int main() {
-  struct net_device *dev;
+  struct net_device* dev;
   signal(SIGINT, on_signal);
   if (net_init() == -1) {
     errorf("net_init() failure");

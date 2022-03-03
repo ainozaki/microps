@@ -3,12 +3,13 @@
 #include "util.h"
 
 #define DUMMY_MTU 1500
-// SIGRTMIN:34, SIGRTMAX64
-// glibc uses 34
-#define DUMMY_IRQ 35
+#define DUMMY_IRQ INTR_BASE
 
-static int dummy_transmit(struct net_device *dev, uint16_t type,
-                          const uint8_t *data, size_t len, const void *dst) {
+static int dummy_transmit(struct net_device* dev,
+                          uint16_t type,
+                          const uint8_t* data,
+                          size_t len,
+                          const void* dst) {
   debugf("dev=%s, type=0x%04x, len=%zu", dev->name, type, len);
   debugdump(data, len);
   intr_raise_irq(DUMMY_IRQ);
@@ -19,13 +20,13 @@ static struct net_device_ops dummy_ops = {
     .transmit = dummy_transmit,
 };
 
-static int dummy_isr(unsigned int irq, void *id) {
-  debugf("irq=%u, dev=%s", irq, ((struct net_device *)id)->name);
+static int dummy_isr(unsigned int irq, void* id) {
+  debugf("irq=%u, dev=%s", irq, ((struct net_device*)id)->name);
   return 0;
 }
 
-struct net_device *dummy_init(void) {
-  struct net_device *dev;
+struct net_device* dummy_init(void) {
+  struct net_device* dev;
 
   dev = net_device_alloc();
   if (!dev) {

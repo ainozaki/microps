@@ -6,10 +6,10 @@
 #include "platform.h"
 #include "util.h"
 
-static struct net_device *devices;
+static struct net_device* devices;
 
-struct net_device *net_device_alloc(void) {
-  struct net_device *dev;
+struct net_device* net_device_alloc(void) {
+  struct net_device* dev;
 
   dev = memory_alloc(sizeof(*dev));
   if (!dev) {
@@ -19,7 +19,7 @@ struct net_device *net_device_alloc(void) {
   return dev;
 }
 
-int net_device_register(struct net_device *dev) {
+int net_device_register(struct net_device* dev) {
   static unsigned int index = 0;
 
   dev->index = index++;
@@ -30,7 +30,7 @@ int net_device_register(struct net_device *dev) {
   return 0;
 }
 
-static int net_device_open(struct net_device *dev) {
+static int net_device_open(struct net_device* dev) {
   if (NET_DEVICE_IS_UP(dev)) {
     errorf("already opened, dev=%s", dev->name);
     return -1;
@@ -46,7 +46,7 @@ static int net_device_open(struct net_device *dev) {
   return 0;
 }
 
-static int net_device_close(struct net_device *dev) {
+static int net_device_close(struct net_device* dev) {
   if (!NET_DEVICE_IS_UP(dev)) {
     errorf("not opened, dev=%s", dev->name);
     return -1;
@@ -62,8 +62,11 @@ static int net_device_close(struct net_device *dev) {
   return 0;
 }
 
-int net_device_output(struct net_device *dev, uint16_t type,
-                      const uint8_t *data, size_t len, const void *dst) {
+int net_device_output(struct net_device* dev,
+                      uint16_t type,
+                      const uint8_t* data,
+                      size_t len,
+                      const void* dst) {
   if (!NET_DEVICE_IS_UP(dev)) {
     errorf("not opened, dev=%s", dev->name);
     return -1;
@@ -81,15 +84,17 @@ int net_device_output(struct net_device *dev, uint16_t type,
   return 0;
 }
 
-int net_input_handler(uint16_t type, const uint8_t *data, size_t len,
-                      struct net_device *dev) {
+int net_input_handler(uint16_t type,
+                      const uint8_t* data,
+                      size_t len,
+                      struct net_device* dev) {
   debugf("dev=%s, type=0x%04x, len=%zu", dev->name, type, len);
   debugdump(data, len);
   return 0;
 }
 
 int net_run(void) {
-  struct net_device *dev;
+  struct net_device* dev;
   if (intr_run() == -1) {
     errorf("intr_run failed");
     return -1;
@@ -104,7 +109,7 @@ int net_run(void) {
 }
 
 int net_shutdown(void) {
-  struct net_device *dev;
+  struct net_device* dev;
   intr_shutdown();
   debugf("close all devices...");
   for (dev = devices; dev; dev = dev->next) {

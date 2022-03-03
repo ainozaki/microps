@@ -3,5 +3,5 @@
 
 #include "net.h"
 
-struct net_device *dummy_init(void);
+struct net_device* dummy_init(void);
 #endif
