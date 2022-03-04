@@ -6,6 +6,7 @@
 
 #define NET_DEVICE_FLAG_UP       0x0001
 #define NET_DEVICE_FLAG_LOOPBACK 0x0010
+#define NET_DEVICE_FLAG_NEED_ARP 0x0100
 
 #define NET_DEVICE_ADDR_LEN 16
 #define IFNAMSIZ            16
