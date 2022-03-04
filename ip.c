@@ -12,6 +12,8 @@
 
 #define IP_VERSION_4 4
 
+static struct ip_iface* ifaces;
+
 struct ip_hdr {
   uint8_t vhl;
   uint8_t tos;
@@ -31,6 +33,8 @@ static void ip_input(const uint8_t* data, size_t len, struct net_device* dev) {
   uint16_t hlen;
   uint16_t total;
   uint16_t offset;
+  struct ip_iface* iface;
+  char addr[IP_ADDR_STR_LEN];
 
   if (len < IP_HDR_SIZE_MIN) {
     errorf("too short length.");
@@ -71,8 +75,20 @@ static void ip_input(const uint8_t* data, size_t len, struct net_device* dev) {
     return;
   }
 
+  iface = (struct ip_iface*)net_device_get_iface(dev, NET_IFACE_FAMILY_IP);
+  if (!iface) {
+    errorf("get iface failure");
+    return;
+  }
+  if (hdr->dst != iface->unicast && hdr->dst != iface->broadcast &&
+      hdr->dst != (iface->netmask | (0xffffffff & ~iface->netmask))) {
+    // forwading
+    return;
+  }
+
   ip_dump(data, total);
-  debugf("dev=%s. len=%zu", dev->name, len);
+  debugf("dev=%s, iface=%s, len=%zu", dev->name,
+         ip_addr_ntop(iface->unicast, addr, sizeof(addr)), len);
 }
 
 int ip_init(void) {
@@ -173,4 +189,36 @@ struct ip_iface* ip_iface_alloc(const char* unicast, const char* netmask) {
   iface->broadcast = iface->unicast & iface->netmask;
   iface->broadcast |= ~(0xffffffff & iface->netmask);
   return iface;
+}
+
+int ip_iface_register(struct net_device* dev, struct ip_iface* iface) {
+  char addr1[IP_ADDR_STR_LEN];
+  char addr2[IP_ADDR_STR_LEN];
+  char addr3[IP_ADDR_STR_LEN];
+
+  // register iface to dev
+  if (net_device_add_iface(dev, (struct net_iface*)iface) < 0) {
+    errorf("failed to register iface to dev");
+    return -1;
+  }
+
+  // add iface to ifaces
+  iface->next = ifaces;
+  ifaces = iface;
+
+  infof("registered: dev=%s, unicast=%s, netmask=%s, broadcast=%s", dev->name,
+        ip_addr_ntop(iface->unicast, addr1, sizeof(addr1)),
+        ip_addr_ntop(iface->netmask, addr2, sizeof(addr2)),
+        ip_addr_ntop(iface->broadcast, addr3, sizeof(addr3)));
+  return 0;
+}
+
+struct ip_iface* ip_iface_select(ip_addr_t addr) {
+  struct ip_iface* entry;
+  for (entry = ifaces; entry; entry = entry->next) {
+    if (entry->unicast == addr) {
+      return entry;
+    }
+  }
+  return NULL;
 }
