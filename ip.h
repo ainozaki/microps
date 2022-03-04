@@ -4,7 +4,17 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "net.h"
+
 typedef uint32_t ip_addr_t;
+
+struct ip_iface {
+  struct net_iface iface;
+  struct ip_iface* next;
+  ip_addr_t unicast;
+  ip_addr_t netmask;
+  ip_addr_t broadcast;
+};
 
 int ip_init(void);
 

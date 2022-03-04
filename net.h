@@ -18,6 +18,11 @@
 
 #define NET_PROTOCOL_TYPE_IP 0x0800
 
+#define NET_IFACE_FAMILY_IP   1
+#define NET_IFACE_FAMILY_IPV6 2
+
+#define NET_IFACE(x) ((struct net_iface*)(x))
+
 struct net_device {
   struct net_device* next;
   unsigned int index;
@@ -33,7 +38,14 @@ struct net_device {
     uint8_t broadcast[NET_DEVICE_ADDR_LEN];
   };
   struct net_device_ops* ops;
+  struct net_iface* ifaces;
   void* priv;
+};
+
+struct net_iface {
+  struct net_iface* next;
+  struct net_device* dev;
+  int family;
 };
 
 struct net_device_ops {
@@ -71,4 +83,8 @@ int net_protocol_register(uint16_t type,
                                           size_t len,
                                           struct net_device* dev));
 int net_softirq_handler(void);
+
+int net_device_add_iface(struct net_device* dev, struct net_iface* iface);
+
+struct net_iface* net_device_get_iface(struct net_device* dev, int family);
 #endif

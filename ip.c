@@ -4,6 +4,7 @@
 #include <stdlib.h>
 
 #include "net.h"
+#include "platform.h"
 #include "util.h"
 
 #define IP_ADDR_STR_LEN 16
@@ -131,8 +132,8 @@ void ip_dump(const uint8_t* data, size_t len) {
   total = ntoh16(hdr->total);
   offset = ntoh16(hdr->offset);
 
-  fprintf(stderr, "      	 vhl: 0x%02x [v:%u, hl:%u (%u)]\n", hdr->vhl, v, hl,
-          hlen);
+  fprintf(stderr, "      	 vhl: 0x%02x [v:%u, hl:%u (%u)]\n", hdr->vhl, v,
+          hl, hlen);
   fprintf(stderr, "        tos: 0x%02x\n", hdr->tos);
   fprintf(stderr, "      total: %u(payload: %u)\n", total, total - hlen);
   fprintf(stderr, "         id: %u\n", ntoh16(hdr->id));
@@ -146,4 +147,30 @@ void ip_dump(const uint8_t* data, size_t len) {
   fprintf(stderr, "        dst: %s\n",
           ip_addr_ntop(hdr->dst, addr, sizeof(addr)));
   funlockfile(stderr);
+}
+
+struct ip_iface* ip_iface_alloc(const char* unicast, const char* netmask) {
+  struct ip_iface* iface;
+
+  iface = memory_alloc(sizeof(*iface));
+  if (!iface) {
+    errorf("memory_alloc() fail");
+    return NULL;
+  }
+
+  NET_IFACE(iface)->family = NET_IFACE_FAMILY_IP;
+
+  if (ip_addr_pton(unicast, &iface->unicast) < 0) {
+    errorf("unicast pton failed");
+    memory_free(iface);
+  }
+
+  if (ip_addr_pton(netmask, &iface->netmask) < 0) {
+    errorf("netmask pton failed");
+    memory_free(iface);
+  }
+
+  iface->broadcast = iface->unicast & iface->netmask;
+  iface->broadcast |= ~(0xffffffff & iface->netmask);
+  return iface;
 }
