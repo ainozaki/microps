@@ -12,6 +12,8 @@
 
 #define IP_VERSION_4 4
 
+#define IP_ADDR_BROADCAST 0xffffffff
+
 static struct ip_iface* ifaces;
 
 struct ip_hdr {
@@ -81,7 +83,7 @@ static void ip_input(const uint8_t* data, size_t len, struct net_device* dev) {
     return;
   }
   if (hdr->dst != iface->unicast && hdr->dst != iface->broadcast &&
-      hdr->dst != (iface->netmask | (0xffffffff & ~iface->netmask))) {
+      hdr->dst != IP_ADDR_BROADCAST) {
     // forwading
     return;
   }
