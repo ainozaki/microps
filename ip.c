@@ -6,6 +6,7 @@
 #include <string.h>
 #include <sys/types.h>
 
+#include "arp.h"
 #include "net.h"
 #include "platform.h"
 #include "util.h"
@@ -270,12 +271,14 @@ static int ip_output_device(struct ip_iface* iface,
       memcpy(hwaddr, NET_IFACE(iface)->dev->broadcast,
              NET_IFACE(iface)->dev->alen);
     } else {
-      errorf("arp not suppoeted");
-      return -1;
+      int arp_result = arp_resolve(NET_IFACE(iface), dst, hwaddr);
+      if (arp_result != ARP_RESOLVE_FOUND) {
+        return arp_result;
+      }
     }
   }
   return net_device_output(NET_IFACE(iface)->dev, NET_PROTOCOL_TYPE_IP, data,
-                           len, &dst);
+                           len, hwaddr);
 }
 
 static ssize_t ip_output_core(struct ip_iface* iface,
