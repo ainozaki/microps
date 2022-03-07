@@ -1,21 +1,12 @@
 #include "icmp.h"
 
 #include <stddef.h>
+#include <string.h>
 
 #include "ip.h"
 #include "util.h"
 
-#define ICMP_TYPE_ECHOREPLY      0x00
-#define ICMP_TYPE_DEST_UNREACH   0x03
-#define ICMP_TYPE_SOURCE_QUENCH  0x04
-#define ICMP_TYPE_REDIRECT       0x5
-#define ICMP_TYPE_ECHO           0x08
-#define ICMP_TYPE_TIME_EXCEEDED  0x0b
-#define ICMP_TYPE_PARAM_PROBLEM  0x0c
-#define ICMP_TYPE_TIMESTAMP      0x0d
-#define ICMP_TYPE_TIMESTAMPREPLY 0x0e
-#define ICMP_TYPE_INFO_REQUEST   0x0f
-#define ICMP_TYPE_INFO_REPLY     0x10
+#define ICMP_BUFSIZE (UINT16_MAX - 20)
 
 struct icmp_hdr {
   uint8_t type;
@@ -95,6 +86,21 @@ void icmp_input(const uint8_t* data,
   debugf("%s => %s, len=%zu", ip_addr_ntop(src, addr1, sizeof(addr1)),
          ip_addr_ntop(src, addr2, sizeof(addr2)), len);
   icmp_dump(data, len);
+
+  struct icmp_hdr* hdr = (struct icmp_hdr*)data;
+  switch (hdr->type) {
+    case ICMP_TYPE_ECHO:
+      dst = iface->unicast;
+      if (icmp_output(ICMP_TYPE_ECHOREPLY, hdr->code, hdr->value,
+                      (uint8_t*)(hdr + 1), len - sizeof(struct icmp_hdr), dst,
+                      src) < 0) {
+        errorf("err icmp_output()");
+        return;
+      }
+      break;
+    default:
+      break;
+  }
 }
 
 int icmp_init() {
@@ -102,4 +108,33 @@ int icmp_init() {
     errorf("ICMP ip_protocol_register() failed");
   }
   return 0;
+}
+
+int icmp_output(uint8_t type,
+                uint8_t code,
+                uint32_t values,
+                const uint8_t* data,
+                size_t len,
+                ip_addr_t src,
+                ip_addr_t dst) {
+  uint8_t buf[ICMP_BUFSIZE];
+  struct icmp_hdr* hdr;
+  size_t msg_len;
+  char addr1[IP_ADDR_STR_LEN];
+  char addr2[IP_ADDR_STR_LEN];
+
+  msg_len = sizeof(struct icmp_hdr) + len;
+  hdr = (struct icmp_hdr*)buf;
+  hdr->type = type;
+  hdr->code = code;
+  hdr->sum = 0;
+  hdr->value = values;
+  memcpy(hdr + sizeof(struct icmp_hdr), data, len);
+  hdr->sum = cksum16((uint16_t*)hdr, msg_len, 0);
+
+  debugf("%s => %s, len=%zu", ip_addr_ntop(src, addr1, sizeof(addr1)),
+         ip_addr_ntop(dst, addr2, sizeof(addr2)));
+  icmp_dump((uint8_t*)hdr, msg_len);
+
+  return ip_output(IP_PROTOCOL_ICMP, (uint8_t*)hdr, msg_len, src, dst);
 }
