@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <sys/time.h>
 
 #define NET_DEVICE_FLAG_UP        0x0001
 #define NET_DEVICE_FLAG_LOOPBACK  0x0010
@@ -95,4 +96,9 @@ int net_softirq_handler(void);
 int net_device_add_iface(struct net_device* dev, struct net_iface* iface);
 
 struct net_iface* net_device_get_iface(struct net_device* dev, int family);
+
+// net timer
+int net_timer_register(struct timeval interval, void (*handler)(void));
+
+int net_timer_handler();
 #endif

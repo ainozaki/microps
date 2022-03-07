@@ -29,6 +29,15 @@ struct net_protocol_queue_entry {
   uint8_t data[];
 };
 
+struct net_timer {
+  struct net_timer* next;
+  struct timeval interval;
+  struct timeval last;
+  void (*handler)(void);
+};
+
+static struct net_timer* timers;
+
 static struct net_protocol* protocols;
 
 struct net_device* net_device_alloc(void) {
@@ -270,4 +279,43 @@ struct net_iface* net_device_get_iface(struct net_device* dev, int family) {
     }
   }
   return NULL;
+}
+
+int net_timer_register(struct timeval interval, void (*handler)(void)) {
+  struct net_timer* entry;
+  entry = memory_alloc(sizeof(*entry));
+  if (!entry) {
+    errorf("memory_alloc() failutre!");
+    return -1;
+  }
+
+  entry->interval = interval;
+  if (gettimeofday(&entry->last, NULL) < 0) {
+    errorf("gettimeofday failed");
+    return -1;
+  }
+  entry->handler = handler;
+
+  entry->next = timers;
+  timers = entry;
+  infof("registered: interval={%d, %d}", interval.tv_sec, interval.tv_usec);
+  return 0;
+}
+
+int net_timer_handler() {
+  struct net_timer* timer;
+  struct timeval now, diff;
+
+  for (timer = timers; timer; timer = timer->next) {
+    gettimeofday(&now, NULL);
+    timersub(&now, &timer->last, &diff);
+    if (timercmp(&timer->interval, &diff, <) != 0) {
+      timer->handler();
+      if (gettimeofday(&timer->last, NULL) < 0) {
+        errorf("gettimeofday failed");
+        return -1;
+      }
+    }
+  }
+  return 0;
 }
