@@ -80,7 +80,7 @@ static void ip_input(const uint8_t* data, size_t len, struct net_device* dev) {
   }
 
   // checksum
-  if (cksum16((uint16_t*)data, len, 0)) {
+  if (cksum16((uint16_t*)hdr, sizeof(struct ip_hdr), 0)) {
     errorf("Invalid checksum");
     return;
   }
@@ -306,7 +306,7 @@ static ssize_t ip_output_core(struct ip_iface* iface,
   hdr->sum = 0;
   hdr->src = src;
   hdr->dst = dst;
-  hdr->sum = cksum16((uint16_t*)buf, IP_HDR_SIZE_MIN + len, 0);
+  hdr->sum = cksum16((uint16_t*)hdr, sizeof(*hdr), 0);
 
   memcpy(buf + IP_HDR_SIZE_MIN, data, len);
 
