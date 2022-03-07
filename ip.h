@@ -8,6 +8,9 @@
 #include "net.h"
 
 #define IP_HDR_SIZE_MIN 20
+#define IP_ADDR_STR_LEN 16
+
+#define IP_PROTOCOL_ICMP 0x01
 
 typedef uint32_t ip_addr_t;
 
@@ -37,5 +40,12 @@ ssize_t ip_output(uint8_t protocol,
                   size_t len,
                   ip_addr_t src,
                   ip_addr_t dst);
+
+int ip_protocol_register(uint8_t type,
+                         void (*handler)(const uint8_t* data,
+                                         size_t len,
+                                         ip_addr_t src,
+                                         ip_addr_t dst,
+                                         struct ip_iface* iface));
 
 #endif

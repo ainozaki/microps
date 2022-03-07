@@ -10,8 +10,6 @@
 #include "platform.h"
 #include "util.h"
 
-#define IP_ADDR_STR_LEN 16
-
 #define IP_VERSION_4 4
 
 #define IP_ADDR_BROADCAST 0xffffffff
@@ -20,6 +18,7 @@
 #define IP_TOTAL_SIZE_MAX UINT16_MAX
 
 static struct ip_iface* ifaces;
+static struct ip_protocol* protocols;
 
 struct ip_hdr {
   uint8_t vhl;
@@ -33,6 +32,16 @@ struct ip_hdr {
   ip_addr_t src;
   ip_addr_t dst;
   uint8_t options[];
+};
+
+struct ip_protocol {
+  struct ip_protocol* next;
+  uint8_t type;
+  void (*handler)(const uint8_t* data,
+                  size_t len,
+                  ip_addr_t src,
+                  ip_addr_t dst,
+                  struct ip_iface* iface);
 };
 
 static void ip_input(const uint8_t* data, size_t len, struct net_device* dev) {
@@ -96,6 +105,16 @@ static void ip_input(const uint8_t* data, size_t len, struct net_device* dev) {
   debugf("dev=%s, iface=%s, len=%zu", dev->name,
          ip_addr_ntop(iface->unicast, addr, sizeof(addr)), len);
   ip_dump(data, total);
+
+  struct ip_protocol* entry;
+  for (entry = protocols; entry; entry = entry->next) {
+    if (entry->type == hdr->protocol) {
+      return entry->handler((uint8_t*)hdr + hlen, total - hlen, hdr->src,
+                            hdr->dst, iface);
+    }
+  }
+  // Unsupported protocol
+  return;
 }
 
 int ip_init(void) {
@@ -337,4 +356,33 @@ ssize_t ip_output(uint8_t protocol,
 
     return len;
   }
+}
+
+int ip_protocol_register(uint8_t type,
+                         void (*handler)(const uint8_t* data,
+                                         size_t len,
+                                         ip_addr_t src,
+                                         ip_addr_t dst,
+                                         struct ip_iface* iface)) {
+  struct ip_protocol* entry;
+
+  for (entry = protocols; entry; entry = entry->next) {
+    if (entry->type == type) {
+      errorf("IP protocol type %d already exist", type);
+      return -1;
+    }
+  }
+
+  entry = (struct ip_protocol*)malloc(sizeof(struct ip_protocol));
+  if (!entry) {
+    errorf("error malloc struct ip_protocol");
+    return -1;
+  }
+  entry->type = type;
+  entry->handler = handler;
+  entry->next = protocols;
+  protocols = entry;
+
+  infof("registerd type=%d", entry->type);
+  return 0;
 }

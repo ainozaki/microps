@@ -4,6 +4,7 @@ DRIVERS = driver/dummy.o \
 					driver/loopback.o
 
 OBJS = util.o \
+			 icmp.o \
 			 ip.o \
 			 net.o
 
@@ -15,7 +16,8 @@ TESTS = test/step0.exe \
 				test/step5.exe \
 				test/step6.exe \
 				test/step7.exe \
-				test/step8.exe
+				test/step8.exe \
+				test/step9.exe
 
 CFLAGS := $(CFLAGS) -g -W -Wall -Wno-unused-parameter -iquote .
 
