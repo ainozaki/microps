@@ -9,6 +9,7 @@
 
 #define IP_HDR_SIZE_MIN 20
 #define IP_ADDR_STR_LEN 16
+#define IP_ADDR_LEN     4
 
 #define IP_PROTOCOL_ICMP 0x01
 

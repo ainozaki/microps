@@ -15,6 +15,9 @@
 #define ETHER_PAYLOAD_SIZE_MIN 46
 #define ETHER_PAYLOAD_SIZE_MAX 1500
 
+#define ETHER_TYPE_IP  0x0800
+#define ETHER_TYPE_ARP 0x0806
+
 // proto type for functions
 typedef ssize_t (*ether_transmit_func_t)(struct net_device* dev,
                                          const uint8_t* data,

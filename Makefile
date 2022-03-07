@@ -3,11 +3,12 @@ APPS =
 DRIVERS = driver/dummy.o \
 					driver/loopback.o
 
-OBJS = util.o \
+OBJS = arp.o \
 			 ether.o \
 			 icmp.o \
 			 ip.o \
-			 net.o
+			 net.o \
+			 util.o
 
 TESTS = test/step0.exe \
 				test/step1.exe \
@@ -21,7 +22,8 @@ TESTS = test/step0.exe \
 				test/step9.exe \
 				test/step10.exe \
 				test/step11.exe \
-				test/step12.exe
+				test/step12.exe \
+				test/step13.exe
 
 CFLAGS := $(CFLAGS) -g -W -Wall -Wno-unused-parameter -iquote .
 
