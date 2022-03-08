@@ -13,6 +13,9 @@
 
 #define IP_PROTOCOL_ICMP 0x01
 
+#define IP_ADDR_ANY       0x00000000
+#define IP_ADDR_BROADCAST 0xffffffff
+
 typedef uint32_t ip_addr_t;
 
 struct ip_iface {
@@ -48,5 +51,9 @@ int ip_protocol_register(uint8_t type,
                                          ip_addr_t src,
                                          ip_addr_t dst,
                                          struct ip_iface* iface));
+
+struct ip_iface* ip_route_get_iface(ip_addr_t dst);
+
+int ip_route_set_default_gateway(struct ip_iface* iface, const char* gateway);
 
 #endif
