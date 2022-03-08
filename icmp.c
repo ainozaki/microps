@@ -60,7 +60,8 @@ static void icmp_dump(const uint8_t* data, size_t len) {
   fprintf(stderr, "       type: %u (%s)\n", hdr->type,
           icmp_type_ntoa(hdr->type));
   fprintf(stderr, "       code: %u\n", hdr->code);
-  fprintf(stderr, "        sum: 0x%04x\n", ntoh32(hdr->sum));
+  fprintf(stderr, "        sum: 0x%04x (0x%04x)\n", ntoh16(hdr->sum),
+          ntoh16(cksum16((uint16_t*)data, len, -hdr->sum)));
   switch (hdr->type) {
     case ICMP_TYPE_ECHOREPLY:
     case ICMP_TYPE_ECHO:

@@ -260,7 +260,8 @@ void ip_dump(const uint8_t* data, size_t len) {
           (offset & 0xe000) >> 13, offset & 0x1fff);
   fprintf(stderr, "        ttl: %u\n", hdr->ttl);
   fprintf(stderr, "   protocol: %u\n", hdr->protocol);
-  fprintf(stderr, "        sum: 0x%04x\n", ntoh16(hdr->sum));
+  fprintf(stderr, "        sum: 0x%04x, (0x%04x)\n", ntoh16(hdr->sum),
+          ntoh16(cksum16((uint16_t*)data, hlen, -hdr->sum)));
   fprintf(stderr, "        src: %s\n",
           ip_addr_ntop(hdr->src, addr, sizeof(addr)));
   fprintf(stderr, "        dst: %s\n",
