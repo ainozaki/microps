@@ -26,4 +26,10 @@ ssize_t udp_output(struct ip_endpoint* src,
                    struct ip_endpoint* dst,
                    const uint8_t* data,
                    size_t len);
+
+int udp_open();
+int udp_close(int fd);
+
+int udp_bind(int id, struct ip_endpoint* local);
+
 #endif
