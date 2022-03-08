@@ -16,7 +16,7 @@
 #define ARP_OP_REPLY   2
 
 #define ARP_CACHE_SIZE             32
-#define ARP_CACHE_TIMEOUT          5
+#define ARP_CACHE_TIMEOUT          30
 #define ARP_CACHE_STATE_FREE       0
 #define ARP_CACHE_STATE_INCOMPLETE 1
 #define ARP_CACHE_STATE_RESOLVED   2

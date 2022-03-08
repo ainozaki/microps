@@ -32,4 +32,14 @@ int udp_close(int fd);
 
 int udp_bind(int id, struct ip_endpoint* local);
 
+ssize_t udp_sendto(int id,
+                   uint8_t* data,
+                   size_t len,
+                   struct ip_endpoint* foreign);
+
+ssize_t udp_recvfrom(int id,
+                     uint8_t* buf,
+                     size_t size,
+                     struct ip_endpoint* foreign);
+
 #endif

@@ -357,8 +357,10 @@ static int ip_output_device(struct ip_iface* iface,
     } else {
       int arp_result = arp_resolve(NET_IFACE(iface), dst, hwaddr);
       if (arp_result != ARP_RESOLVE_FOUND) {
+        debugf("cannot arp resolve found");
         return arp_result;
       }
+      debugf("arp resolved");
     }
   }
   return net_device_output(NET_IFACE(iface)->dev, NET_PROTOCOL_TYPE_IP, data,
