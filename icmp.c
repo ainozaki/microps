@@ -85,7 +85,7 @@ void icmp_input(const uint8_t* data,
   char addr2[IP_ADDR_STR_LEN];
 
   debugf("%s => %s, len=%zu", ip_addr_ntop(src, addr1, sizeof(addr1)),
-         ip_addr_ntop(src, addr2, sizeof(addr2)), len);
+         ip_addr_ntop(dst, addr2, sizeof(addr2)), len);
   icmp_dump(data, len);
 
   struct icmp_hdr* hdr = (struct icmp_hdr*)data;
@@ -124,7 +124,7 @@ int icmp_output(uint8_t type,
   char addr1[IP_ADDR_STR_LEN];
   char addr2[IP_ADDR_STR_LEN];
 
-  msg_len = sizeof(struct icmp_hdr) + len;
+  msg_len = sizeof(*hdr) + len;
   hdr = (struct icmp_hdr*)buf;
   hdr->type = type;
   hdr->code = code;
@@ -134,7 +134,7 @@ int icmp_output(uint8_t type,
   hdr->sum = cksum16((uint16_t*)hdr, msg_len, 0);
 
   debugf("%s => %s, len=%zu", ip_addr_ntop(src, addr1, sizeof(addr1)),
-         ip_addr_ntop(dst, addr2, sizeof(addr2)));
+         ip_addr_ntop(dst, addr2, sizeof(addr2)), msg_len);
   icmp_dump((uint8_t*)hdr, msg_len);
 
   return ip_output(IP_PROTOCOL_ICMP, (uint8_t*)hdr, msg_len, src, dst);

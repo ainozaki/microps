@@ -9,6 +9,7 @@
 #include "intr.h"
 #include "ip.h"
 #include "platform.h"
+#include "udp.h"
 #include "util.h"
 
 #define PROTOCOL_QUEUE_LIMIT
@@ -193,6 +194,11 @@ int net_init(void) {
   }
 
   if (icmp_init() == -1) {
+    errorf("icmp_init failed");
+    return -1;
+  }
+
+  if (udp_init() == -1) {
     errorf("icmp_init failed");
     return -1;
   }

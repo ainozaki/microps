@@ -12,9 +12,15 @@
 #define IP_ADDR_LEN     4
 
 #define IP_PROTOCOL_ICMP 0x01
+#define IP_PROTOCOL_UDP  0x11
 
 #define IP_ADDR_ANY       0x00000000
 #define IP_ADDR_BROADCAST 0xffffffff
+
+#define IP_ENDPOINT_STR_LEN (IP_ADDR_STR_LEN + 6)
+
+#define IP_TOTAL_SIZE_MAX   UINT16_MAX
+#define IP_PAYLOAD_SIZE_MAX (IP_TOTAL_SIZE_MAX - IP_HDR_SIZE_MIN)
 
 typedef uint32_t ip_addr_t;
 
@@ -24,6 +30,11 @@ struct ip_iface {
   ip_addr_t unicast;
   ip_addr_t netmask;
   ip_addr_t broadcast;
+};
+
+struct ip_endpoint {
+  ip_addr_t addr;
+  uint16_t port;
 };
 
 int ip_init(void);
@@ -55,5 +66,10 @@ int ip_protocol_register(uint8_t type,
 struct ip_iface* ip_route_get_iface(ip_addr_t dst);
 
 int ip_route_set_default_gateway(struct ip_iface* iface, const char* gateway);
+
+extern int ip_endpoint_pton(const char* p, struct ip_endpoint* n);
+extern char* ip_endpoint_ntop(const struct ip_endpoint* n,
+                              char* p,
+                              size_t size);
 
 #endif

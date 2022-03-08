@@ -306,8 +306,8 @@ int ip_iface_register(struct net_device* dev, struct ip_iface* iface) {
     return -1;
   }
 
-  struct ip_route* route =
-      ip_route_add(iface->unicast, iface->netmask, IP_ADDR_ANY, iface);
+  struct ip_route* route = ip_route_add(iface->unicast & iface->netmask,
+                                        iface->netmask, IP_ADDR_ANY, iface);
   if (!route) {
     errorf("failed to add route");
     return -1;
@@ -376,13 +376,14 @@ static ssize_t ip_output_core(struct ip_iface* iface,
                               uint16_t offset) {
   uint8_t buf[IP_TOTAL_SIZE_MAX];
   struct ip_hdr* hdr;
-  uint16_t total;
+  uint16_t total, hlen;
   char addr[IP_ADDR_STR_LEN];
 
+  hlen = sizeof(*hdr);
   hdr = (struct ip_hdr*)buf;
-  hdr->vhl = (0x04 << 4) | (IP_HDR_SIZE_MIN / 4);
+  hdr->vhl = (0x04 << 4) | (hlen >> 2);
   hdr->tos = 0;
-  total = IP_HDR_SIZE_MIN + len;
+  total = hlen + len;
   hdr->total = hton16(total);
   hdr->id = hton16(id);
   hdr->offset = 0;
@@ -391,7 +392,7 @@ static ssize_t ip_output_core(struct ip_iface* iface,
   hdr->sum = 0;
   hdr->src = src;
   hdr->dst = dst;
-  hdr->sum = cksum16((uint16_t*)hdr, sizeof(*hdr), 0);
+  hdr->sum = cksum16((uint16_t*)hdr, hlen, 0);
 
   memcpy(buf + IP_HDR_SIZE_MIN, data, len);
 
@@ -410,6 +411,7 @@ ssize_t ip_output(uint8_t protocol,
   struct ip_route* route;
   ip_addr_t nexthop;
   char addr[IP_ADDR_STR_LEN];
+  char addr2[IP_ADDR_STR_LEN];
   uint16_t id;
 
   if (src == IP_ADDR_ANY && dst == IP_ADDR_BROADCAST) {
@@ -423,8 +425,11 @@ ssize_t ip_output(uint8_t protocol,
   }
   iface = route->iface;
   if (src != IP_ADDR_ANY && src != iface->unicast) {
-    errorf("unable to output with specified source address, addr=%s",
-           ip_addr_ntop(src, addr, sizeof(addr)));
+    errorf(
+        "unable to output with specified source address, addr=%s, "
+        "iface->unicast=%s",
+        ip_addr_ntop(src, addr, sizeof(addr)),
+        ip_addr_ntop(iface->unicast, addr2, sizeof(addr2)));
     return -1;
   }
 
@@ -473,4 +478,34 @@ int ip_protocol_register(uint8_t type,
 
   infof("registerd type=%d", entry->type);
   return 0;
+}
+
+int ip_endpoint_pton(const char* p, struct ip_endpoint* n) {
+  char* sep;
+  char addr[IP_ADDR_STR_LEN] = {};
+  long int port;
+
+  sep = strrchr(p, ':');
+  if (!sep) {
+    return -1;
+  }
+  memcpy(addr, p, sep - p);
+  if (ip_addr_pton(addr, &n->addr) == -1) {
+    return -1;
+  }
+  port = strtol(sep + 1, NULL, 10);
+  if (port <= 0 || port > UINT16_MAX) {
+    return -1;
+  }
+  n->port = hton16(port);
+  return 0;
+}
+
+char* ip_endpoint_ntop(const struct ip_endpoint* n, char* p, size_t size) {
+  size_t offset;
+
+  ip_addr_ntop(n->addr, p, size);
+  offset = strlen(p);
+  snprintf(p + offset, size - offset, ":%d", ntoh16(n->port));
+  return p;
 }

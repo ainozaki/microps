@@ -8,6 +8,7 @@ OBJS = arp.o \
 			 icmp.o \
 			 ip.o \
 			 net.o \
+			 udp.o \
 			 util.o
 
 TESTS = test/step0.exe \
@@ -27,7 +28,8 @@ TESTS = test/step0.exe \
 				test/step14.exe \
 				test/step15.exe \
 				test/step16.exe \
-				test/step17.exe
+				test/step17.exe \
+				test/step18.exe
 
 CFLAGS := $(CFLAGS) -g -W -Wall -Wno-unused-parameter -iquote .
 LDFLAGS := -lrt
