@@ -130,7 +130,7 @@ int icmp_output(uint8_t type,
   hdr->code = code;
   hdr->sum = 0;
   hdr->value = values;
-  memcpy(hdr + sizeof(struct icmp_hdr), data, len);
+  memcpy(hdr + 1, data, len);
   hdr->sum = cksum16((uint16_t*)hdr, msg_len, 0);
 
   debugf("%s => %s, len=%zu", ip_addr_ntop(src, addr1, sizeof(addr1)),
