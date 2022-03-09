@@ -56,6 +56,8 @@ struct arp_cache {
 static mutex_t mutex = MUTEX_INITIALIZER;
 static struct arp_cache caches[ARP_CACHE_SIZE];
 
+/* Utils */
+
 static char* arp_opcode_ntoa(uint16_t opcode) {
   switch (ntoh16(opcode)) {
     case ARP_OP_REQUEST:
@@ -128,6 +130,8 @@ static struct arp_cache* arp_cache_select(ip_addr_t pa) {
   return NULL;
 }
 
+// Update arp_cache
+// Resolve queue'd IP request
 static struct arp_cache* arp_cache_update(ip_addr_t pa, const uint8_t* ha) {
   struct arp_cache* cache;
   struct arp_queue_entry* queue;
@@ -193,6 +197,7 @@ static struct arp_cache* arp_cache_insert(ip_addr_t pa, const uint8_t* ha) {
   return cache;
 }
 
+/* Timer */
 static void arp_timer_handler() {
   struct arp_cache* entry;
   struct timeval now, diff;
@@ -210,6 +215,39 @@ static void arp_timer_handler() {
   }
   mutex_unlock(&mutex);
 }
+
+/* ARP queue */
+int arp_queue_insert(struct net_device* dev,
+                     ip_addr_t pa,
+                     size_t len,
+                     const uint8_t* data) {
+  struct arp_queue_entry* entry;
+  struct arp_cache* cache;
+  char addr[IP_ADDR_STR_LEN];
+
+  cache = arp_cache_select(pa);
+  if (!cache) {
+    errorf("Cache not found");
+    return -1;
+  }
+
+  entry = memory_alloc(sizeof(*entry));
+  if (!entry) {
+    errorf("Cannot memory_alloc() arp_queue_entry");
+    return -1;
+  }
+
+  entry->dev = dev;
+  entry->len = len;
+  entry->data = data;
+  entry->next = cache->arp_queue;
+  cache->arp_queue = entry;
+  debugf("Insrt arp_queue, pa=%s, len=%zu",
+         ip_addr_ntop(pa, addr, sizeof(addr)), len);
+  return 0;
+}
+
+/* Request */
 
 static int arp_request(struct net_iface* iface, ip_addr_t tpa) {
   struct arp_ether_ip request;
@@ -307,36 +345,6 @@ int arp_init() {
     errorf("net_protocol_register() in arp failed.");
     return -1;
   }
-  return 0;
-}
-
-int arp_queue_insert(struct net_device* dev,
-                     ip_addr_t pa,
-                     size_t len,
-                     const uint8_t* data) {
-  struct arp_queue_entry* entry;
-  struct arp_cache* cache;
-  char addr[IP_ADDR_STR_LEN];
-
-  cache = arp_cache_select(pa);
-  if (!cache) {
-    errorf("Cache not found");
-    return -1;
-  }
-
-  entry = memory_alloc(sizeof(*entry));
-  if (!entry) {
-    errorf("Cannot memory_alloc() arp_queue_entry");
-    return -1;
-  }
-
-  entry->dev = dev;
-  entry->len = len;
-  entry->data = data;
-  entry->next = cache->arp_queue;
-  cache->arp_queue = entry;
-  debugf("Insrt arp_queue, pa=%s, len=%zu",
-         ip_addr_ntop(pa, addr, sizeof(addr)), len);
   return 0;
 }
 

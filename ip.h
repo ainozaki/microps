@@ -38,24 +38,23 @@ struct ip_endpoint {
 };
 
 int ip_init(void);
-
-int ip_addr_pton(const char* p, ip_addr_t* n);
-char* ip_addr_ntop(ip_addr_t n, char* p, size_t size);
-
-void ip_dump(const uint8_t* data, size_t len);
-
-struct ip_iface* ip_iface_alloc(const char* unicast, const char* netmask);
-
-int ip_iface_register(struct net_device* dev, struct ip_iface* iface);
-
-struct ip_iface* ip_iface_select(ip_addr_t addr);
-
 ssize_t ip_output(uint8_t protocol,
                   const uint8_t* data,
                   size_t len,
                   ip_addr_t src,
                   ip_addr_t dst);
 
+/* Utils */
+int ip_addr_pton(const char* p, ip_addr_t* n);
+char* ip_addr_ntop(ip_addr_t n, char* p, size_t size);
+void ip_dump(const uint8_t* data, size_t len);
+
+/* ip_iface */
+struct ip_iface* ip_iface_alloc(const char* unicast, const char* netmask);
+int ip_iface_register(struct net_device* dev, struct ip_iface* iface);
+struct ip_iface* ip_iface_select(ip_addr_t addr);
+
+/* IP protocol */
 int ip_protocol_register(uint8_t type,
                          void (*handler)(const uint8_t* data,
                                          size_t len,
@@ -63,10 +62,11 @@ int ip_protocol_register(uint8_t type,
                                          ip_addr_t dst,
                                          struct ip_iface* iface));
 
+/* ip_route */
 struct ip_iface* ip_route_get_iface(ip_addr_t dst);
-
 int ip_route_set_default_gateway(struct ip_iface* iface, const char* gateway);
 
+/* ip_endpoint */
 extern int ip_endpoint_pton(const char* p, struct ip_endpoint* n);
 extern char* ip_endpoint_ntop(const struct ip_endpoint* n,
                               char* p,
