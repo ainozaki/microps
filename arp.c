@@ -38,11 +38,19 @@ struct arp_ether_ip {
   uint8_t tpa[IP_ADDR_LEN];
 };
 
+struct arp_queue_entry {
+  struct net_device* dev;
+  size_t len;
+  uint8_t* data;
+  struct arp_queue_entry* next;
+};
+
 struct arp_cache {
   unsigned char state;
   ip_addr_t pa;
   uint8_t ha[ETHER_ADDR_LEN];
   struct timeval timestamp;
+  struct arp_queue_entry* arp_queue;
 };
 
 static mutex_t mutex = MUTEX_INITIALIZER;
@@ -82,35 +90,19 @@ static void arp_dump(const uint8_t* data, size_t len) {
   funlockfile(stderr);
 }
 
+/* ARP cache */
+
 static void arp_cache_delete(struct arp_cache* cache) {
   char addr1[IP_ADDR_STR_LEN];
   char addr2[ETHER_ADDR_STR_LEN];
   cache->state = ARP_CACHE_STATE_FREE;
   cache->pa = 0;
   timerclear(&cache->timestamp);
+  cache->arp_queue = NULL;
   debugf("DELETE; pa=%s, ha=%s", ip_addr_ntop(cache->pa, addr1, sizeof(addr1)),
          ether_addr_ntop(cache->ha, addr2, sizeof(addr2)));
 }
 
-static void arp_timer_handler() {
-  struct arp_cache* entry;
-  struct timeval now, diff;
-
-  mutex_lock(&mutex);
-  gettimeofday(&now, NULL);
-  for (entry = caches; entry < tailof(caches); entry++) {
-    if (entry->state != ARP_CACHE_STATE_FREE &&
-        entry->state != ARP_CACHE_STATE_STATIC) {
-      timersub(&now, &entry->timestamp, &diff);
-      if (diff.tv_sec > ARP_CACHE_TIMEOUT) {
-        arp_cache_delete(entry);
-      }
-    }
-  }
-  mutex_unlock(&mutex);
-}
-
-/* ARP cache */
 static struct arp_cache* arp_cache_alloc() {
   struct arp_cache *entry, *oldest = NULL;
 
@@ -138,6 +130,7 @@ static struct arp_cache* arp_cache_select(ip_addr_t pa) {
 
 static struct arp_cache* arp_cache_update(ip_addr_t pa, const uint8_t* ha) {
   struct arp_cache* cache;
+  struct arp_queue_entry* queue;
   char addr1[IP_ADDR_STR_LEN];
   char addr2[ETHER_ADDR_STR_LEN];
   struct timeval tv;
@@ -153,6 +146,25 @@ static struct arp_cache* arp_cache_update(ip_addr_t pa, const uint8_t* ha) {
     return NULL;
   }
   cache->timestamp = tv;
+
+  // resolve arp queue
+  while (1) {
+    queue = cache->arp_queue;
+    if (!queue) {
+      debugf("No arp queue");
+      break;
+    }
+    // send queue'd request
+    // Limit to IP because only IP can insert arp_queue
+    if (net_device_output(queue->dev, NET_PROTOCOL_TYPE_IP, queue->data,
+                          queue->len, cache->ha) < 0) {
+      errorf("net_device_output() for arp_queue'd packets failed");
+      return NULL;
+    }
+    cache->arp_queue = queue->next;
+    memory_free(queue);
+  }
+
   debugf("UPDATE: pa=%s, ha=%s", ip_addr_ntop(pa, addr1, sizeof(addr1)),
          ether_addr_ntop(ha, addr2, sizeof(addr2)));
   return cache;
@@ -175,9 +187,28 @@ static struct arp_cache* arp_cache_insert(ip_addr_t pa, const uint8_t* ha) {
     errorf("gettimeofday failed");
     return NULL;
   }
+  cache->arp_queue = NULL;
   debugf("INSERT: pa=%s, ha=%s", ip_addr_ntop(pa, addr1, sizeof(addr1)),
          ether_addr_ntop(ha, addr2, sizeof(addr2)));
   return cache;
+}
+
+static void arp_timer_handler() {
+  struct arp_cache* entry;
+  struct timeval now, diff;
+
+  mutex_lock(&mutex);
+  gettimeofday(&now, NULL);
+  for (entry = caches; entry < tailof(caches); entry++) {
+    if (entry->state != ARP_CACHE_STATE_FREE &&
+        entry->state != ARP_CACHE_STATE_STATIC) {
+      timersub(&now, &entry->timestamp, &diff);
+      if (diff.tv_sec > ARP_CACHE_TIMEOUT) {
+        arp_cache_delete(entry);
+      }
+    }
+  }
+  mutex_unlock(&mutex);
 }
 
 static int arp_request(struct net_iface* iface, ip_addr_t tpa) {
@@ -245,6 +276,7 @@ static void arp_input(const uint8_t* data, size_t len, struct net_device* dev) {
   memcpy(&tpa, msg->tpa, sizeof(tpa));
 
   // update arp cache
+  // includes arp queue resolution
   mutex_lock(&mutex);
   if (arp_cache_update(spa, msg->sha)) {
     marge = 1;
@@ -275,6 +307,36 @@ int arp_init() {
     errorf("net_protocol_register() in arp failed.");
     return -1;
   }
+  return 0;
+}
+
+int arp_queue_insert(struct net_device* dev,
+                     ip_addr_t pa,
+                     size_t len,
+                     const uint8_t* data) {
+  struct arp_queue_entry* entry;
+  struct arp_cache* cache;
+  char addr[IP_ADDR_STR_LEN];
+
+  cache = arp_cache_select(pa);
+  if (!cache) {
+    errorf("Cache not found");
+    return -1;
+  }
+
+  entry = memory_alloc(sizeof(*entry));
+  if (!entry) {
+    errorf("Cannot memory_alloc() arp_queue_entry");
+    return -1;
+  }
+
+  entry->dev = dev;
+  entry->len = len;
+  entry->data = data;
+  entry->next = cache->arp_queue;
+  cache->arp_queue = entry;
+  debugf("Insrt arp_queue, pa=%s, len=%zu",
+         ip_addr_ntop(pa, addr, sizeof(addr)), len);
   return 0;
 }
 
