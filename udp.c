@@ -1,5 +1,6 @@
 #include "udp.h"
 
+#include <errno.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -8,6 +9,7 @@
 
 #include "ip.h"
 #include "platform.h"
+#include "sched.h"
 #include "util.h"
 
 #define UDP_PCB_SIZE          16
@@ -22,7 +24,7 @@ struct udp_pcb {
   int state;
   struct ip_endpoint local;
   struct queue_head queue;
-  int wc;
+  struct sched_ctx ctx;
 };
 
 struct udp_queue_entry {
@@ -34,12 +36,26 @@ struct udp_queue_entry {
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static struct udp_pcb pcbs[UDP_PCB_SIZE];
 
+static void event_handler(void* arg) {
+  struct udp_pcb* pcb;
+
+  (void)arg;
+  mutex_lock(&mutex);
+  for (pcb = pcbs; pcb < tailof(pcbs); pcb++) {
+    if (pcb->state == UDP_PCB_STATE_OPEN) {
+      sched_interrupt(&pcb->ctx);
+    }
+  }
+  mutex_unlock(&mutex);
+}
+
 /* PCB */
 static struct udp_pcb* udp_pcb_alloc() {
   struct udp_pcb* pcb;
   for (pcb = pcbs; pcb < tailof(pcbs); pcb++) {
     if (pcb->state == UDP_PCB_STATE_FREE) {
       pcb->state = UDP_PCB_STATE_OPEN;
+      sched_ctx_init(&pcb->ctx);
       return pcb;
     }
   }
@@ -64,6 +80,14 @@ static int udp_pcb_id(struct udp_pcb* pcb) {
 
 static void udp_pcb_release(struct udp_pcb* pcb) {
   struct queue_entry* entry;
+
+  pcb->state = UDP_PCB_STATE_CLOSING;
+  if (sched_ctx_destroy(&pcb->ctx) == -1) {
+    // Still remains sleeping ctx
+    sched_wakeup(&pcb->ctx);
+    return;
+  }
+
   pcb->state = UDP_PCB_STATE_FREE;
   pcb->local.addr = IP_ADDR_ANY;
   pcb->local.port = 0;
@@ -167,6 +191,9 @@ static void udp_input(const uint8_t* data,
     return;
   }
   debugf("queue pushed: id=%d, num=%d", udp_pcb_id(pcb), pcb->queue.num);
+
+  // Wakeup task
+  sched_wakeup(&pcb->ctx);
   mutex_unlock(&mutex);
 }
 
@@ -216,6 +243,10 @@ ssize_t udp_output(struct ip_endpoint* src,
 int udp_init() {
   if (ip_protocol_register(IP_PROTOCOL_UDP, udp_input) < 0) {
     errorf("UDP ip_protocol_register() failed");
+  }
+  if (net_event_subscribe(event_handler, NULL) == -1) {
+    errorf("net_event_subscribe() failure");
+    return -1;
   }
   return 0;
 }
@@ -340,6 +371,7 @@ ssize_t udp_recvfrom(int id,
   struct udp_pcb* pcb;
   struct udp_queue_entry* entry;
   ssize_t len;
+  int err;
 
   mutex_lock(&mutex);
   pcb = udp_pcb_get(id);
@@ -355,11 +387,15 @@ ssize_t udp_recvfrom(int id,
     if (entry) {
       break;
     }
-    pcb->wc++;
-    mutex_unlock(&mutex);
-    sleep(1);
-    mutex_lock(&mutex);
-    pcb->wc--;
+
+    // Sleep task
+    err = sched_sleep(&pcb->ctx, &mutex, NULL);
+    if (err) {
+      debugf("interrupted");
+      mutex_unlock(&mutex);
+      errno = EINTR;
+      return -1;
+    }
     if (pcb->state == UDP_PCB_STATE_CLOSING) {
       debugf("closed");
       udp_pcb_release(pcb);

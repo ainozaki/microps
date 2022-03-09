@@ -13,9 +13,11 @@
 #include "util.h"
 
 #define PROTOCOL_QUEUE_LIMIT
-#define INTR_IRQ_SOFTIRQ SIGUSR1
 
 static struct net_device* devices;
+static struct net_event* events;
+static struct net_timer* timers;
+static struct net_protocol* protocols;
 
 struct net_protocol {
   struct net_protocol* next;
@@ -36,10 +38,6 @@ struct net_timer {
   struct timeval last;
   void (*handler)(void);
 };
-
-static struct net_timer* timers;
-
-static struct net_protocol* protocols;
 
 struct net_device* net_device_alloc(void) {
   struct net_device* dev;
@@ -324,4 +322,31 @@ int net_timer_handler() {
     }
   }
   return 0;
+}
+
+/* net_event */
+int net_event_subscribe(void (*handler)(void* arg), void* arg) {
+  struct net_event* event;
+  event = memory_alloc(sizeof(*event));
+  if (!event) {
+    errorf("memory_alloc() failure");
+    return -1;
+  }
+  event->handler = handler;
+  event->arg = arg;
+  event->next = events;
+  events = event;
+  return 0;
+}
+
+int net_event_handler(void) {
+  struct net_event* event;
+  for (event = events; event; event = event->next) {
+    event->handler(event->arg);
+  }
+  return 0;
+}
+
+void net_raise_event() {
+  intr_raise_irq(INTR_IRQ_EVENT);
 }

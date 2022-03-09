@@ -4,7 +4,9 @@
 #define INTR_IRQ_SHARED 0x0001
 // SIGRTMIN:34, SIGRTMAX64
 // glibc uses 34
-#define INTR_BASE 35
+#define INTR_BASE        35
+#define INTR_IRQ_SOFTIRQ SIGUSR1
+#define INTR_IRQ_EVENT   SIGUSR2
 
 // Register intr
 int intr_request_irq(unsigned int irq,

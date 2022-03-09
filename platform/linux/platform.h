@@ -47,4 +47,12 @@ mutex_unlock(mutex_t *mutex)
     return pthread_mutex_unlock(mutex);
 }
 
+
+/* Schedular */
+struct sched_ctx {
+	pthread_cond_t cond;
+	int interrupted;
+	int wc;
+};
+
 #endif
