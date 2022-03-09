@@ -426,14 +426,14 @@ static int ip_output_device(struct ip_iface* iface,
     } else {
       int arp_result = arp_resolve(NET_IFACE(iface), dst, hwaddr);
       switch (arp_result) {
+        case ARP_RESOLVE_FOUND:
+          break;
         case ARP_RESOLVE_INCOMPLETE:
           if (arp_queue_insert(NET_IFACE(iface)->dev, dst, len, data) < 0) {
             errorf("arp_queue_insert() failure");
           }
           debugf("Push IP packet into arp_queue.");
-          break;
-        case ARP_RESOLVE_FOUND:
-          break;
+          return arp_result;
         default:
           debugf("Cannot arp resolve found.");
           return arp_result;
